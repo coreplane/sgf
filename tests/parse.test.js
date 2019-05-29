@@ -121,13 +121,6 @@ t.test('should convert lower case properties', t => {
     t.end()
 })
 
-t.test('should parse a relatively complex file', t => {
-    let trees = sgf.parseFile(__dirname + '/complex.sgf')
-
-    t.equal(trees.length, 1)
-    t.end()
-})
-
 t.test('should be able to parse nodes outside a game', t => {
     let trees1 = sgf.parse(';B[hh];W[ii]')
     let trees2 = sgf.parse('(;B[hh];W[ii])')
@@ -172,53 +165,3 @@ let languageMap = {
     'japanese': '囲碁',
     'korean': '바둑'
 }
-
-for (let language in languageMap) {
-    t.test('should be able to decode non-UTF-8 text nodes', t => {
-        t.equal(
-            sgf.parseFile(`${__dirname}/${language}.sgf`)[0].children[0].children[0].data.C[0],
-            `${languageMap[language]} is fun`
-        )
-
-        t.end()
-    })
-}
-
-t.test('should be able to go back and re-parse attributes set before CA', t => {
-    t.equal(
-        sgf.parseFile(__dirname + '/chinese.sgf')[0].data.PW[0],
-        '柯洁'
-    )
-
-    t.equal(
-        sgf.parseFile(__dirname + '/chinese.sgf')[0].data.PB[0],
-        '古力'
-    )
-
-    t.end()
-})
-
-t.test('should ignore unknown encodings', t => {
-    t.notEqual(
-        sgf.parseFile(__dirname + '/japanese_bad.sgf')[0].children[0].children[0].data.C[0],
-        `${languageMap['japanese']} is fun`
-    )
-
-    t.end()
-})
-
-t.test('should ignore BOM markers', t => {
-    t.doesNotThrow(() => {
-        sgf.parseFile(__dirname + '/utf8bom.sgf')
-    })
-
-    t.end()
-})
-
-t.test('should parse a UTF-16 LE file correctly', t => {
-    t.doesNotThrow(() => {
-        sgf.parseFile(__dirname + '/utf16le.sgf')
-    })
-
-    t.end()
-})

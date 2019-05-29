@@ -1,5 +1,5 @@
 const {tokenizeIter, tokenizeBufferIter, tokenize, tokenizeBuffer} = require('./tokenize')
-const {parse, parseTokens, parseBuffer, parseFile} = require('./parse')
+const {parse, parseTokens, parseBuffer} = require('./parse')
 const {stringify} = require('./stringify')
 const helper = require('./helper')
 
@@ -11,6 +11,5 @@ Object.assign(exports, {
     parse,
     parseTokens,
     parseBuffer,
-    parseFile,
     stringify
 }, helper)
