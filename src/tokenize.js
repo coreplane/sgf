@@ -1,5 +1,10 @@
+/* DJM
 const iconv = require('./iconv-lite')
-const jschardet = require('./jschardet')
+*/
+const iconv = {
+    decode: (buffer, encoding) => { return buffer.toString(); },
+    encodingExists: (encoding) => { return encoding === 'UTF-8'; }
+};
 const {unescapeString} = require('./helper')
 
 exports.tokenizeIter = function*(contents) {
@@ -67,7 +72,7 @@ exports.tokenizeBufferIter = function*(buffer, {encoding = null} = {}) {
 
     // Guess encoding
 
-    let detectedEncoding = jschardet.detect(buffer.slice(0, 100)).encoding
+    let detectedEncoding = 'UTF-8'; /* DJM jschardet.detect(buffer.slice(0, 100)).encoding */
     let contents = iconv.decode(buffer, detectedEncoding)
     let tokens = exports.tokenizeIter(contents)
 

@@ -1,3 +1,4 @@
+/* DJM
 module.exports = (() => {
     try {
         let m = require('iconv-lite')
@@ -11,3 +12,4 @@ module.exports = (() => {
         }
     }
 })()
+*/

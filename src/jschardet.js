@@ -1,3 +1,4 @@
+/* DJM
 module.exports = (() => {
     try {
         let m = require('jschardet')
@@ -10,3 +11,4 @@ module.exports = (() => {
         }
     }
 })()
+*/
