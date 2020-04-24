@@ -1,117 +1,95 @@
-/* DJM
-const iconv = require('./iconv-lite')
-*/
+const {createTokenizer, regexRule} = require('doken')
 const iconv = {
     decode: (buffer, encoding) => { return buffer.toString(); },
     encodingExists: (encoding) => { return encoding === 'UTF-8'; }
 };
 const {unescapeString} = require('./helper')
 
+const encodingDetectionProps = [
+  'EV',
+  'GN',
+  'GC',
+  'AN',
+  'BT',
+  'WT',
+  'PW',
+  'PB',
+  'C'
+]
+
+const _tokenize = createTokenizer({
+  rules: [
+    regexRule('_whitespace', /\s+/y, {lineBreaks: true}),
+    regexRule('parenthesis', /(\(|\))/y),
+    regexRule('semicolon', /;/y),
+    regexRule('prop_ident', /[A-Za-z]+/y),
+    regexRule('c_value_type', /\[([^\\\]]|\\[^])*\]/y, {lineBreaks: true}),
+    {
+      type: 'invalid',
+      match: (input, position) => ({length: 1})
+    }
+  ]
+})
+
 exports.tokenizeIter = function*(contents) {
-    let length = contents.length
-    let pos = 0
-    let [row, col] = [0, 0]
-    let rules = {
-        whitespace: /^\s+/,
-        parenthesis: /^(\(|\))/,
-        semicolon: /^;/,
-        prop_ident: /^[A-Za-z]+/,
-        c_value_type: /^\[([^\\\]]|\\[^])*\]/
-    }
+  for (let token of _tokenize(contents)) {
+    token.progress = token.pos / (contents.length - 1)
+    delete token.length
 
-    while (contents.length > 0) {
-        let match = null
-
-        for (let type in rules) {
-            match = rules[type].exec(contents)
-            if (match == null) continue
-
-            let value = match[0]
-
-            if (type !== 'whitespace') {
-                yield {
-                    type,
-                    value,
-                    row,
-                    col,
-                    pos,
-                    progress: pos / (length - 1)
-                }
-            }
-
-            // Update source position
-
-            let newlineIndices = Array.from(value)
-                .map((c, i) => c === '\n' ? i : null)
-                .filter(x => x != null);
-
-            row += newlineIndices.length;
-            if (newlineIndices.length > 0) {
-                col = value.length - newlineIndices.slice(-1)[0] - 1;
-            } else {
-                col += value.length;
-            }
-
-            pos += value.length
-            contents = contents.slice(value.length)
-
-            break
-        }
-
-        if (match == null) {
-            throw new Error(`Unexpected token at ${row + 1}:${col + 1}`)
-        }
-    }
+    yield token
+  }
 }
 
 exports.tokenizeBufferIter = function*(buffer, {encoding = null} = {}) {
-    if (encoding != null) {
-        yield* exports.tokenizeIter(iconv.decode(buffer, encoding))
-        return
+  if (encoding != null) {
+    yield* exports.tokenizeIter(iconv.decode(buffer, encoding))
+    return
+  }
+
+  // Guess encoding
+
+  let detectedEncoding = 'UTF-8'; /* DJM jschardet.detect(buffer.slice(0, 300)).encoding */
+  let contents = iconv.decode(buffer, detectedEncoding)
+  let tokens = exports.tokenizeIter(contents)
+
+  // Search for encoding
+
+  let prelude = []
+
+  while (true) {
+    let next = tokens.next()
+    if (next.done) break
+
+    let {type, value} = next.value
+    let lastToken = prelude[prelude.length - 1]
+
+    prelude.push(next.value)
+
+    if (
+      type === 'c_value_type' &&
+      lastToken != null &&
+      lastToken.type === 'prop_ident' &&
+      lastToken.value === 'CA'
+    ) {
+      encoding = unescapeString(value.slice(1, -1))
+      break
     }
+  }
 
-    // Guess encoding
-
-    let detectedEncoding = 'UTF-8'; /* DJM jschardet.detect(buffer.slice(0, 100)).encoding */
-    let contents = iconv.decode(buffer, detectedEncoding)
-    let tokens = exports.tokenizeIter(contents)
-
-    // Search for encoding
-
-    let prelude = []
-    let secondSemicolon = false
-    let givenEncoding = detectedEncoding
-
-    while (true) {
-        let next = tokens.next()
-        if (next.done) break
-
-        let {type, value} = next.value
-        let i = prelude.length
-
-        prelude.push(next.value)
-
-        if (type === 'semicolon') {
-            if (!secondSemicolon) secondSemicolon = true
-            else break
-        } else if (
-            type === 'c_value_type'
-            && i > 0
-            && prelude[i - 1].type === 'prop_ident'
-            && prelude[i - 1].value === 'CA'
-        ) {
-            givenEncoding = unescapeString(value.slice(1, -1))
-            break
-        }
-    }
-
-    if (detectedEncoding !== givenEncoding && iconv.encodingExists(givenEncoding)) {
-        yield* exports.tokenizeIter(iconv.decode(buffer, givenEncoding))
-    } else {
-        yield* prelude
-        yield* tokens
-    }
+  if (
+    encoding != null &&
+    encoding != detectedEncoding &&
+    iconv.encodingExists(encoding)
+  ) {
+    yield* exports.tokenizeIter(iconv.decode(buffer, encoding))
+  } else {
+    yield* prelude
+    yield* tokens
+  }
 }
 
 exports.tokenize = contents => [...exports.tokenizeIter(contents)]
-exports.tokenizeBuffer = (buffer, opts) => [...exports.tokenizeBufferIter(buffer, opts)]
+
+exports.tokenizeBuffer = (buffer, opts) => [
+  ...exports.tokenizeBufferIter(buffer, opts)
+]
