@@ -31,16 +31,11 @@
     "doken": "^1.0.0"
   },
   "devDependencies": {
-    "iconv-lite": "^0.4.24",
-    "jschardet": "^2.1.0",
     "onchange": "^6.1.0",
     "prettier": "1.19.1",
     "tap": "^14.10.6"
   },
-  "optionalDependencies": {
-    "iconv-lite": "0.4.x",
-    "jschardet": ">=1.0 <3"
-  },
+  "optionalDependencies": {},
   "prettier": {
     "semi": false,
     "singleQuote": true,
